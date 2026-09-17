@@ -14,7 +14,10 @@ interface UseSalesInvoicesParams {
 }
 
 const fetcher = async (url: string): Promise<ApiResponse<SalesInvoice[]>> => {
-  const response = await fetch(url);
+  const token = localStorage.getItem("qne_access_token");
+  const response = await fetch(url, {
+    headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+  });
   if (!response.ok) {
     throw new Error(`HTTP error! status: ${response.status}`);
   }
@@ -30,7 +33,6 @@ export function useSalesInvoices({
   enabled = true,
 }: UseSalesInvoicesParams) {
   const params = new URLSearchParams({
-    ...(token ? { token } : {}),
     $skip: skip.toString(),
     $top: top.toString(),
     $orderby: orderby,

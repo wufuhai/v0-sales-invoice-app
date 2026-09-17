@@ -1,20 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL = "https://openapi.account.qne.cloud";
+const API_BASE_URL = process.env.QNE_OPENAPI_BASE_URL;
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const token = searchParams.get("token");
+  const authorization = request.headers.get("authorization");
   const skip = searchParams.get("$skip") || "0";
   const top = searchParams.get("$top") || "20";
   const filter = searchParams.get("$filter") || "";
   const orderby = searchParams.get("$orderby") || "docDate desc";
 
-  if (!token) {
-    return NextResponse.json(
-      { success: false, error: "JWT token is required" },
-      { status: 401 }
-    );
+  if (!authorization?.startsWith("Bearer ")) {
+    return NextResponse.json({ success: false, error: "Authorization is required" }, { status: 401 });
+  }
+  if (!API_BASE_URL) {
+    return NextResponse.json({ success: false, error: "QNE Open API is not configured" }, { status: 503 });
   }
 
   try {
@@ -28,16 +28,20 @@ export async function GET(request: NextRequest) {
       queryParams.set("$filter", filter);
     }
 
-    const response = await fetch(
-      `${API_BASE_URL}/api/SalesInvoices/List?${queryParams.toString()}`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
+    let response: Response | undefined;
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        response = await fetch(`${API_BASE_URL}/api/SalesInvoices/List?${queryParams.toString()}`, {
+          headers: { Authorization: authorization, Accept: "application/json" },
+          cache: "no-store",
+        });
+      } catch {
+        if (attempt === 2) throw new Error("QNE Open API network error");
       }
-    );
+      if (response && ![429, 500, 502, 503, 504].includes(response.status)) break;
+      if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 250 * 2 ** attempt));
+    }
+    if (!response) throw new Error("QNE Open API unavailable");
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -52,8 +56,11 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await response.json();
+    if (data.code && data.code !== "0000") {
+      return NextResponse.json({ success: false, error: data.message || "QNE Open API request failed" }, { status: 502 });
+    }
 
-    // Handle various response structures from the API
+    // Handle the QNE envelope: data.value contains rows and data.count contains the total.
     // API returns: { data: { count: number, value: [...] } }
     let invoices = [];
     let totalCount = 0;

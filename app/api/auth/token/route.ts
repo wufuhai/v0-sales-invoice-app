@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const API_BASE_URL = "https://openapi.account.qne.cloud";
+const API_BASE_URL = process.env.QNE_OPENAPI_BASE_URL;
 
 export async function POST(request: NextRequest) {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ success: false, error: "Username/password login is disabled in production" }, { status: 404 });
+  }
+  if (!API_BASE_URL) {
+    return NextResponse.json({ success: false, error: "QNE Open API is not configured" }, { status: 503 });
+  }
   try {
     const body = await request.json();
     const { username, password } = body;

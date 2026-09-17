@@ -18,6 +18,7 @@ import { AlertCircle, LogIn, FileText, Eye, EyeOff } from "lucide-react";
 export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated, isLoading } = useAuth();
+  const isDevelopment = process.env.NODE_ENV !== "production";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -80,7 +81,7 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          {isDevelopment ? <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="username">Username</Label>
               <Input
@@ -147,9 +148,9 @@ export default function LoginPage() {
                 </span>
               )}
             </Button>
-          </form>
+          </form> : <p className="rounded-md bg-muted p-3 text-center text-sm text-muted-foreground">Use the N3 My Apps launch link with your session token to sign in.</p>}
 
-          <div className="mt-6 space-y-4">
+          {isDevelopment && <div className="mt-6 space-y-4">
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
@@ -168,7 +169,7 @@ export default function LoginPage() {
                 ?token=YOUR_JWT_TOKEN
               </code>
             </p>
-          </div>
+          </div>}
         </CardContent>
       </Card>
     </div>

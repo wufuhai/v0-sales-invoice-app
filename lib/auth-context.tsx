@@ -16,6 +16,7 @@ interface UserInfo {
   email: string;
   tenantCode: string;
   roles: string;
+  companyName: string;
 }
 
 interface AuthContextType {
@@ -30,7 +31,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const SESSION_KEY = "qne_auth_token";
+const SESSION_KEY = "qne_access_token";
 
 function parseJwtPayload(token: string): UserInfo | null {
   try {
@@ -58,6 +59,7 @@ function parseJwtPayload(token: string): UserInfo | null {
       email: Array.isArray(payload.email) ? payload.email[0] : payload.email || "",
       tenantCode: payload.tenantCode || "",
       roles: payload.roles || "",
+      companyName: "",
     };
   } catch {
     return null;
@@ -70,7 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Initialize auth state from URL token or session storage
+  // Initialize auth state from the My Apps token or localStorage.
   useEffect(() => {
     // Use window.location to get URL params (avoids useSearchParams Suspense requirement)
     const urlParams = new URLSearchParams(window.location.search);
@@ -82,15 +84,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (userInfo) {
         setToken(urlToken);
         setUser(userInfo);
-        sessionStorage.setItem(SESSION_KEY, urlToken);
+        localStorage.setItem(SESSION_KEY, urlToken);
         // Remove token from URL for security
         const newUrl = new URL(window.location.href);
         newUrl.searchParams.delete("token");
         window.history.replaceState({}, "", newUrl.toString());
       }
     } else {
-      // Check session storage
-      const storedToken = sessionStorage.getItem(SESSION_KEY);
+      const storedToken = localStorage.getItem(SESSION_KEY);
       if (storedToken) {
         const userInfo = parseJwtPayload(storedToken);
         if (userInfo) {
@@ -98,11 +99,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setUser(userInfo);
         } else {
           // Token is invalid or expired
-          sessionStorage.removeItem(SESSION_KEY);
+          localStorage.removeItem(SESSION_KEY);
         }
       }
     }
     
+    const refreshSession = async (activeToken: string) => {
+      try {
+        const response = await fetch("/api/companyprofile/basic-info", {
+          headers: { Authorization: `Bearer ${activeToken}` },
+        });
+        if (!response.ok) return;
+        const result = await response.json();
+        if (result.code !== "0000" || !result.data) return;
+        setUser((current) => current ? {
+          ...current,
+          companyName: result.data.companyName || result.data.name || "",
+          tenantCode: result.data.tenantCode || current.tenantCode,
+        } : current);
+      } catch {
+        // The JWT remains usable when the optional session refresh is unavailable.
+      }
+    };
+
+    const activeToken = localStorage.getItem(SESSION_KEY);
+    if (activeToken) void refreshSession(activeToken);
     setIsLoading(false);
   }, []);
 
@@ -111,7 +132,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (userInfo) {
       setToken(newToken);
       setUser(userInfo);
-      sessionStorage.setItem(SESSION_KEY, newToken);
+      localStorage.setItem(SESSION_KEY, newToken);
       return true;
     }
     return false;
@@ -148,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setToken(null);
     setUser(null);
-    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(SESSION_KEY);
     router.push("/login");
   }, [router]);
 

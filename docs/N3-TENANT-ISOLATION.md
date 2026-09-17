@@ -4,4 +4,6 @@ Sales Invoice Dashboard is a read-only proxy over QNE Open API and does not crea
 
 The browser stores only the Path A session JWT under `qne_access_token`; this is authentication state, not business data. Every QNE request is sent through a same-origin route with the caller's bearer token. Company identity is refreshed from `/api/companyprofile/BasicInfo`, and the returned `tenantCode` is the session source of truth. No client-supplied tenant id is accepted.
 
-List calls use bounded `$skip` and `$top` values and consume `data.value` and `data.count`. There are no nested app tenants, server-side tenant caches, reporting endpoints, or app-owned writes.
+List calls use bounded `$skip` and `$top` values and consume `data.value` and `data.count`. There are no nested app tenants, server-side tenant caches, reporting endpoints, or app-owned writes. Each invoice page is capped at 100 rows, uses bounded `$skip` / `$top`, and retries at most twice with timed backoff after 429/5xx/network failures; there is no per-row fan-out.
+
+The human confirmed: “No cross-device data — the app does not need to preserve business data across browsers or computers; browser-only loss is accepted.”

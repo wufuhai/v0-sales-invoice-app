@@ -160,8 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       return { success: true };
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch {
       return { success: false, error: "Network error. Please try again." };
     }
   }, [loginWithToken]);

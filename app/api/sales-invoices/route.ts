@@ -5,8 +5,10 @@ const API_BASE_URL = process.env.QNE_OPENAPI_BASE_URL;
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const authorization = request.headers.get("authorization");
-  const skip = searchParams.get("$skip") || "0";
-  const top = searchParams.get("$top") || "20";
+  const requestedSkip = Number(searchParams.get("$skip") || "0");
+  const requestedTop = Number(searchParams.get("$top") || "20");
+  const skip = Number.isInteger(requestedSkip) ? Math.max(0, Math.min(requestedSkip, 100000)) : 0;
+  const top = Number.isInteger(requestedTop) ? Math.max(1, Math.min(requestedTop, 100)) : 20;
   const filter = searchParams.get("$filter") || "";
   const orderby = searchParams.get("$orderby") || "docDate desc";
 
@@ -19,8 +21,8 @@ export async function GET(request: NextRequest) {
 
   try {
     const queryParams = new URLSearchParams({
-      $skip: skip,
-      $top: top,
+      $skip: skip.toString(),
+      $top: top.toString(),
       $orderby: orderby,
     });
 
@@ -60,33 +62,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: data.message || "QNE Open API request failed" }, { status: 502 });
     }
 
-    // Handle the QNE envelope: data.value contains rows and data.count contains the total.
-    // API returns: { data: { count: number, value: [...] } }
-    let invoices = [];
-    let totalCount = 0;
-
-    if (Array.isArray(data)) {
-      invoices = data;
-      totalCount = data.length;
-    } else if (data.data && typeof data.data === "object" && Array.isArray(data.data.value)) {
-      // Handle nested structure: { data: { count, value } }
-      invoices = data.data.value;
-      totalCount = data.data.count || data.data.value.length;
-    } else if (data.data && Array.isArray(data.data)) {
-      invoices = data.data;
-      totalCount = data.totalCount || data.data.length;
-    } else if (data.value && Array.isArray(data.value)) {
-      invoices = data.value;
-      totalCount = data.count || data["@odata.count"] || data.value.length;
-    } else if (data.items && Array.isArray(data.items)) {
-      invoices = data.items;
-      totalCount = data.totalCount || data.items.length;
+    if (data.code !== "0000" || !data.data || !Array.isArray(data.data.value)) {
+      return NextResponse.json({ success: false, error: "Unexpected QNE response envelope" }, { status: 502 });
     }
 
     return NextResponse.json({
       success: true,
-      data: invoices,
-      totalCount: totalCount,
+      data: data.data.value,
+      totalCount: Number.isFinite(data.data.count) ? data.data.count : data.data.value.length,
     });
   } catch (error) {
     console.error("Fetch error:", error);

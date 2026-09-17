@@ -10,7 +10,7 @@ This repository is linked to a [v0](https://v0.app) project. You can continue de
 
 ## Authentication
 
-Production uses the N3 My Apps Path A launch flow: open the app with `?token=<JWT>`. The app stores the token under `qne_access_token`, removes it from the address bar, and uses same-origin proxy routes for QNE requests. Username/password login is available only for localhost development.
+Production uses the N3 My Apps Path A launch flow: open the app with `?token=<JWT>`. The app stores the token under `qne_access_token`, removes it from the address bar, and uses same-origin proxy routes for QNE requests. Path B username/password login is available only for localhost development and is disabled in production.
 
 The app has no app-owned business data store. Invoices are read live from QNE, and the browser-only JWT is authentication state rather than business data.
 

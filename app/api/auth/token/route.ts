@@ -58,8 +58,7 @@ export async function POST(request: NextRequest) {
       success: true,
       token,
     });
-  } catch (error) {
-    console.error("Auth error:", error);
+  } catch {
     return NextResponse.json(
       { success: false, error: "Authentication service unavailable" },
       { status: 500 }

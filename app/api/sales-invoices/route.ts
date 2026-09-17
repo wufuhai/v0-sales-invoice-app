@@ -46,8 +46,7 @@ export async function GET(request: NextRequest) {
     if (!response) throw new Error("QNE Open API unavailable");
 
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("API Error:", response.status, errorText);
+      await response.text();
       return NextResponse.json(
         {
           success: false,
@@ -71,12 +70,11 @@ export async function GET(request: NextRequest) {
       data: data.data.value,
       totalCount: Number.isFinite(data.data.count) ? data.data.count : data.data.value.length,
     });
-  } catch (error) {
-    console.error("Fetch error:", error);
+  } catch {
     return NextResponse.json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error: "QNE Open API service unavailable",
       },
       { status: 500 }
     );

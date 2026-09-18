@@ -53,6 +53,11 @@ export function AppHeader() {
                   <p className="text-xs leading-none text-muted-foreground">
                     {user.email}
                   </p>
+                  {user.companyName && (
+                    <p className="text-xs leading-none text-muted-foreground">
+                      {user.companyName}
+                    </p>
+                  )}
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
